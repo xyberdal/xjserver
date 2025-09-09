@@ -1,0 +1,1578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>XJ Server Admin - Omada API</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- Bootstrap 5 CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome for icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .stats-card { min-width: 250px; }
+        .filter-form .form-select, .filter-form .form-control { min-width: 120px; }
+        .filter-form .btn { min-width: 90px; }
+        @media (max-width: 767px) {
+            .filter-form .row > * { margin-bottom: 10px; }
+        }
+        .status-indicator { 
+            width: 10px; 
+            height: 10px; 
+            border-radius: 50%; 
+            display: inline-block; 
+            margin-right: 5px; 
+        }
+        .status-online { background-color: #28a745; }
+        .status-offline { background-color: #dc3545; }
+        .card-metric { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .device-card { 
+            border-left: 4px solid #007bff; 
+            transition: all 0.3s ease;
+        }
+        .device-card:hover { 
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1); 
+            transform: translateY(-2px);
+        }
+        .metric-icon { font-size: 2rem; opacity: 0.7; }
+        .real-time-indicator {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        .pulse-highlight {
+            background-color: #fff3cd !important;
+            animation: fadeToNormal 3s ease;
+        }
+        @keyframes fadeToNormal {
+            0% { background-color: #fff3cd; }
+            100% { background-color: transparent; }
+        }
+        .use-later-card {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .use-later-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .border-purple { border-color: #6f42c1 !important; }
+        .text-purple { color: #6f42c1 !important; }
+        .bg-purple { background-color: #6f42c1 !important; }
+    </style>
+</head>
+<body>
+<div class="container-fluid my-4">
+    <!-- Header with Live Status -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h2><i class="fas fa-cogs"></i> XJ Server Admin - Omada Integration</h2>
+                <div class="d-flex align-items-center">
+                    <span class="status-indicator real-time-indicator status-online"></span>
+                    <span class="text-muted">Live Dashboard</span>
+                    <a href="{{ url_for('logout') }}" class="btn btn-outline-danger btn-sm ms-3">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    <i class="fas fa-{% if category == 'success' %}check-circle{% elif category == 'danger' %}exclamation-triangle{% else %}info-circle{% endif %}"></i>
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}       
+    <!-- Enhanced System Stats with Icons and Colors -->
+    <div class="row mb-4">
+        <div class="col-md-2 col-6 mb-3">
+            <div class="card card-metric text-center">
+                <div class="card-body">
+                    <i class="fas fa-microchip metric-icon"></i>
+                    <h5 class="mb-0"><span id="cpu">-</span>%</h5>
+                    <small>CPU Usage</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2 col-6 mb-3">
+            <div class="card card-metric text-center" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                <div class="card-body">
+                    <i class="fas fa-memory metric-icon"></i>
+                    <h5 class="mb-0"><span id="ram">-</span>%</h5>
+                    <small>RAM Usage</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2 col-6 mb-3">
+            <div class="card card-metric text-center" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                <div class="card-body">
+                    <i class="fas fa-hdd metric-icon"></i>
+                    <h5 class="mb-0"><span id="disk">-</span>%</h5>
+                    <small>Disk Usage</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6 mb-3">
+            <div class="card card-metric text-center" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+                <div class="card-body">
+                    <i class="fas fa-clock metric-icon"></i>
+                    <h6 class="mb-0"><span id="uptime">-</span></h6>
+                    <small>System Uptime</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6 mb-3">
+            <div class="card card-metric text-center" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+                <div class="card-body">
+                    <i class="fas fa-network-wired metric-icon"></i>
+                    <h6 class="mb-0"><span id="ip">-</span></h6>
+                    <small>Server IP</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Real-time Omada Portal Metrics + Customer Use Later -->
+    <div class="row mb-4">
+        <div class="col-md-2 col-6 mb-3">
+            <div class="card border-success">
+                <div class="card-body text-center">
+                    <i class="fas fa-coins text-success" style="font-size: 2rem;"></i>
+                    <h4 class="mb-0">₱<span id="today-revenue">-</span></h4>
+                    <small class="text-muted">Today's Revenue</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2 col-6 mb-3">
+            <div class="card border-warning">
+                <div class="card-body text-center">
+                    <i class="fas fa-ticket-alt text-warning" style="font-size: 2rem;"></i>
+                    <h4 class="mb-0"><span id="vouchers-used">-</span></h4>
+                    <small class="text-muted">Vouchers Used Today</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2 col-6 mb-3">
+            <div class="card border-info">
+                <div class="card-body text-center">
+                    <i class="fas fa-wifi text-info" style="font-size: 2rem;"></i>
+                    <h4 class="mb-0"><span id="devices-online">-</span></h4>
+                    <small class="text-muted">Devices Online</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    
+
+    <!-- Main Configuration Tabs -->
+    <ul class="nav nav-tabs" id="adminTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="devices-tab" data-bs-toggle="tab" data-bs-target="#devices" type="button">
+                <i class="fas fa-microchip"></i> ESP32 Devices
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="mapping-tab" data-bs-toggle="tab" data-bs-target="#mapping" type="button">
+                <i class="fas fa-coins"></i> Coin Mapping
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="logs-tab" data-bs-toggle="tab" data-bs-target="#logs" type="button">
+                <i class="fas fa-list"></i> Activity Logs
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="api-tab" data-bs-toggle="tab" data-bs-target="#api" type="button">
+                <i class="fas fa-cog"></i> API Config
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="adminTabContent">
+        <!-- ESP32 Devices Tab -->
+        <div class="tab-pane fade" id="devices" role="tabpanel">
+            <div class="mt-3">
+                {% if pending_adoptions %}
+                  <div class="card mb-4">
+                    <div class="card-header">
+                      <i class="fas fa-hourglass-half text-warning"></i> Pending ESP32 Adoption Requests
+                    </div>
+                    <div class="card-body">
+                      <div class="table-responsive">
+                        <pre>{{ pending_adoptions | tojson }}</pre>
+                        <table class="table table-hover">
+                          <thead class="table-light">
+                            <tr>
+                              <th><i class="fas fa-map-marker-alt"></i> Location</th>
+                              <th><i class="fas fa-microchip"></i> Device Type</th>
+                              <th><i class="fas fa-network-wired"></i> MAC Address</th>
+                              <th><i class="fas fa-clock"></i> Requested At</th>
+                              <th><i class="fas fa-tools"></i> Action</th>
+                            </tr>
+                          </thead>
+                        <tbody>
+                            {% for device in pending_adoptions %}
+                            <form method="post" action="{{ url_for('adopt_esp32') }}" class="row g-2 align-items-center">
+                              <tr>
+                                <input type="hidden" name="device_type" value="{{ device.device_type }}">
+                                <input type="hidden" name="mac_address" value="{{ device.mac_address }}">
+                                <td>
+                                  <input type="text" name="location_name" class="form-control form-control-sm"
+                                         placeholder="Location Name" required>
+                                </td>
+                                <td>
+                                  <span class="badge bg-primary">{{ device.device_type }}</span>
+                                </td>
+                                <td>
+                                  <code>{{ device.mac_address }}</code>
+                                </td>
+                                <td>
+                                  <small>{{ device.timestamp }}</small>
+                                </td>
+                                <td>
+                                  <div class="d-flex">
+                                    <select name="site_id" class="form-select form-select-sm me-2" required>
+                                      <option value="0000" selected>Select site</option>
+                                      {% for site in sites %}
+                                        <option value="{{ site.site_id }}">{{ site.site_name }}</option>
+                                      {% endfor %}
+                                    </select>
+                                    <input type="text" name="portal_id" class="form-control form-control-sm me-2"
+                                           placeholder="Portal ID (optional)">
+                                    <!-- Add License Key and Public Key fields below -->
+                                    <input type="text" name="license_key" class="form-control form-control-sm mb-2"
+                                            placeholder="License Key (signature, base64)" required>
+                                    <textarea name="public_key" class="form-control form-control-sm mb-2"
+                                            placeholder="Public Key (PEM format)" rows="2" required></textarea>
+                                    <button class="btn btn-success btn-sm" type="submit">
+                                      <i class="fas fa-plus"></i> Adopt
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            </form>
+                            {% endfor %}
+                        </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                {% else %}
+                  <p>No pending ESP32 adoption requests.</p>
+                {% endif %}
+                <!-- Adopted Devices -->
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-check-circle text-success"></i> Adopted ESP32 Devices
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>ID</th> <!-- New column -->
+                                        <th><i class="fas fa-map-marker-alt"></i> Location</th>
+                                        <th><i class="fas fa-microchip"></i> Device Type</th>
+                                        <th><i class="fas fa-building"></i> Site</th>
+                                        <th><i class="fas fa-signal"></i> Status</th>
+                                        <th><i class="fas fa-tools"></i> Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for esp in adopted_esp32s %}
+                                    <tr>
+                                        <td>
+                                            <code>{{ esp.id or 'N/A' }}</code> <!-- Show the device id -->
+                                        </td>
+                                        <td>
+                                            <strong>{{ esp.location_name }}</strong>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-primary">{{ esp.device_type }}</span>
+                                        </td>
+                                        <td>
+                                            <code>{{ esp.site_id or 'N/A' }}</code>
+                                        </td>
+                                        <td>
+                                            {% if esp.connected %}
+                                                <span class="badge bg-success">
+                                                    <span class="status-indicator status-online"></span>Connected
+                                                </span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">
+                                                    <span class="status-indicator status-offline"></span>Disconnected
+                                                </span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-danger" onclick="deleteDevice('{{ esp.id }}')">
+                                                <i class="fas fa-trash"></i> Delete
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% else %}
+                                    <tr>
+                                        <td colspan="6" class="text-center text-muted">
+                                            No adopted ESP32 devices yet.
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <!-- Select Coinslot Device and Reset WiFi -->
+                <div class="row mt-3">
+                    <div class="col-md-8">
+                        <label for="coinslot-selector" class="form-label">Select Coinslot Device:</label>
+                        <select class="form-select" id="coinslot-selector">
+                            <option value="">Select device...</option>
+                            {% for esp in adopted_esp32s %}
+                                        {% if esp.device_type == 'coinslot' %}
+                                            <option value="{{ esp.location_name }}">{{ esp.location_name }} 
+                                                {% if esp.connected %}(Connected){% else %}(Offline){% endif %}
+                                            </option>
+                                        {% endif %}
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4 d-flex align-items-end">
+                        <button class="btn btn-danger w-100" type="button" onclick="resetWiFiForSelected()">
+                            <i class="fas fa-wifi"></i> Reset WiFi (Remote)
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+         <!-- Coin Mapping Tab -->
+        <div class="tab-pane fade" id="mapping" role="tabpanel">
+            <div class="mt-3">
+                <!-- ESP32 Selection for Mapping -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <i class="fas fa-microchip"></i> Select ESP32 for Coin Mapping
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <label for="esp32-selector" class="form-label">Choose ESP32 Coinslot Device:</label>
+                                <select class="form-select" id="esp32-selector" onchange="selectESP32ForMapping()">
+                                    <option value="">Select ESP32...</option>
+                                    {% for esp in adopted_esp32s %}
+                                        {% if esp.device_type == 'coinslot' %}
+                                            <option value="{{ esp.location_name }}">{{ esp.location_name }} 
+                                                {% if esp.connected %}(Connected){% else %}(Offline){% endif %}
+                                            </option>
+                                        {% endif %}
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-4 d-flex align-items-end">
+                                <div class="alert alert-info w-100 mb-0" id="mapping-status" style="display: none;">
+                                    <i class="fas fa-info-circle"></i> 
+                                    <span id="mapping-message">ESP32 selected for mapping</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+        
+                <!-- Real-time Pulse Mapping Table -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <i class="fas fa-table"></i> Real-time Pulse to Amount Mapping
+                        <button class="btn btn-sm btn-outline-secondary float-end" onclick="clearMappingTable()">
+                            <i class="fas fa-trash"></i> Clear Table
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped" id="mapping-table">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Pulse Count</th>
+                                        <th>Amount (₱)</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="mapping-tbody">
+                                    <tr>
+                                        <td colspan="3" class="text-center text-muted">
+                                            Select an ESP32 device and insert coins to start mapping
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="mt-3">
+                            <button class="btn btn-success" onclick="saveAllMappings()" id="save-mappings-btn" disabled>
+                                <i class="fas fa-save"></i> Save All Mappings
+                            </button>
+                        </div>
+                    </div>
+                </div>
+        
+                <!-- NEW: Amount to Duration Mapping -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <i class="fas fa-clock"></i> Amount to Duration Mapping
+                        <button class="btn btn-sm btn-success float-end" onclick="addDurationRow()">
+                            <i class="fas fa-plus"></i> Add Row
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped" id="duration-mapping-table">
+                                <thead class="table-info">
+                                    <tr>
+                                        <th>Amount (₱)</th>
+                                        <th>Duration (Minutes)</th>
+                                        <th>Description</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="duration-mapping-tbody">
+                                    <!-- Will be populated by JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="mt-3">
+                            <button class="btn btn-primary" onclick="saveDurationMappings()">
+                                <i class="fas fa-save"></i> Save Duration Mappings
+                            </button>
+                        </div>
+                    </div>
+                </div>
+        
+                <!-- Current Pulse Mappings -->
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <i class="fas fa-list"></i> Current Pulse Mappings
+                        <button class="btn btn-sm btn-outline-secondary float-end" onclick="loadCurrentMappings()">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped" id="current-mappings-table">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Pulse Count</th>
+                                        <th>Amount (₱)</th>
+                                        <th>Created At</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="current-mappings-tbody">
+                                    <tr>
+                                        <td colspan="4" class="text-center">
+                                            <i class="fas fa-spinner fa-spin"></i> Loading current mappings...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+        
+                <!-- Current Duration Mappings -->
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <i class="fas fa-list"></i> Current Duration Mappings
+                        <button class="btn btn-sm btn-outline-secondary float-end" onclick="loadCurrentDurationMappings()">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped" id="current-duration-table">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Amount (₱)</th>
+                                        <th>Duration (Minutes)</th>
+                                        <th>Description</th>
+                                        <th>Created At</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="current-duration-tbody">
+                                    <tr>
+                                        <td colspan="5" class="text-center">
+                                            <i class="fas fa-spinner fa-spin"></i> Loading current duration mappings...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Activity Logs Tab -->
+        <div class="tab-pane fade" id="logs" role="tabpanel">
+            <div class="mt-3">
+                <!-- Voucher Usage Summary -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <i class="fas fa-ticket-alt"></i> Voucher Stock Summary
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Site</th>
+                                        <th>Price (₱)</th>
+                                        <th>Unused Vouchers</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% if voucher_stock_summary %}
+                                        {% for v in voucher_stock_summary %}
+                                        <tr>
+                                            <td>{{ v.site_name }}</td>
+                                            <td>₱{{ v.price }}</td>
+                                            <td><span class="badge bg-info">{{ v.unused }}</span></td>
+                                        </tr>
+                                        {% endfor %}
+                                    {% else %}
+                                        <tr>
+                                            <td colspan="3" class="text-center text-muted">No voucher stock data available yet.</td>
+                                        </tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                            <div class="mt-4">
+                                <button id="checkVoucherStockBtn" class="btn btn-success">
+                                    <i class="fas fa-search"></i> Refill if Needed
+                                </button>
+                                <span id="voucherStockSpinner" class="spinner-border spinner-border-sm text-success ms-2" style="display:none;" role="status"></span>
+                            </div>
+                            <div id="voucherStockResult" class="mt-3"></div>  
+                        </div>
+                    </div>
+                </div>
+                <!-- Filters -->
+                <form class="filter-form mb-4" method="get" action="{{ url_for('admin') }}">
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="fas fa-filter"></i> Filter Logs
+                        </div>
+                        <div class="card-body">
+                            <div class="row align-items-end g-2">
+                                <div class="col-md-2 col-6">
+                                    <label for="filter_site" class="form-label">Site</label>
+                                    <select class="form-select" id="filter_site" name="filter_site">
+                                        <option value="">All Sites</option>
+                                        {% for site in sites %}
+                                            <option value="{{ site.site_id }}" {% if request.args.get('filter_site') == site.site_id %}selected{% endif %}>{{ site.site_name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-2 col-6">
+                                    <label for="filter_location" class="form-label">Location</label>
+                                    <select class="form-select" id="filter_location" name="filter_location">
+                                        <option value="">All Locations</option>
+                                        {% for loc in locations %}
+                                            <option value="{{ loc }}" {% if request.args.get('filter_location') == loc %}selected{% endif %}>{{ loc }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-2 col-6">
+                                    <label for="filter_type" class="form-label">Type</label>
+                                    <select class="form-select" id="filter_type" name="filter_type">
+                                        <option value="">All Types</option>
+                                        <option value="Valid for Multi-Use (1 time at most)" {% if request.args.get('filter_type') == 'Valid for Multi-Use (1 time at most)' %}selected{% endif %}>Valid</option>
+                                        <option value="expired" {% if request.args.get('filter_type') == 'expired' %}selected{% endif %}>Expired</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4 col-12">
+                                    <label class="form-label">Time Range</label>
+                                    <div class="btn-group w-100" role="group">
+                                        <input type="radio" class="btn-check" name="filter_time" value="week" id="week" {% if request.args.get('filter_time') == 'week' %}checked{% endif %}>
+                                        <label class="btn btn-outline-primary" for="week">Week</label>
+                                        
+                                        <input type="radio" class="btn-check" name="filter_time" value="month" id="month" {% if request.args.get('filter_time') == 'month' %}checked{% endif %}>
+                                        <label class="btn btn-outline-primary" for="month">Month</label>
+                                        
+                                        <input type="radio" class="btn-check" name="filter_time" value="6months" id="6months" {% if request.args.get('filter_time') == '6months' %}checked{% endif %}>
+                                        <label class="btn btn-outline-primary" for="6months">6M</label>
+                                        
+                                        <input type="radio" class="btn-check" name="filter_time" value="year" id="year" {% if request.args.get('filter_time') == 'year' %}checked{% endif %}>
+                                        <label class="btn btn-outline-primary" for="year">Year</label>
+                                        
+                                        <input type="radio" class="btn-check" name="filter_time" value="" id="all" {% if not request.args.get('filter_time') %}checked{% endif %}>
+                                        <label class="btn btn-outline-secondary" for="all">All</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-2 col-12">
+                                    <button type="submit" class="btn btn-primary w-100">
+                                        <i class="fas fa-search"></i> Apply Filters
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+                <!-- Coin Insertion Summary -->
+                <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>
+                            <i class="fas fa-coins"></i> Coin Insertion Summary
+                        </span>
+                        <button class="btn btn-danger btn-sm" onclick="clearCoinLog()">
+                            <i class="fas fa-trash"></i> Clear All
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Site</th><th>Location</th><th>Device Type</th><th>Total Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for c in coin_summary %}
+                                    <tr>
+                                        <td>{{ c.site_id }}</td>
+                                        <td>{{ c.location_name }}</td>
+                                        <td><span class="badge bg-info">{{ c.device_type }}</span></td>
+                                        <td><span class="badge bg-warning">₱{{ c.total_amount }}</span></td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <!-- Usage Summary Table -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <i class="fas fa-chart-bar"></i> Usage Summary
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Location</th>
+                                        <th>Site</th>
+                                        <th>Voucher Count</th>
+                                        <th>Total Revenue</th>
+                                        <th>Average Transaction</th>
+                                        <th>Last Activity</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% if usage_summary %}
+                                        {% for row in usage_summary %}
+                                        <tr>
+                                            <td>{{ row.location_name }}</td>
+                                            <td>{{ row.site_id }}</td>
+                                            <td>{{ row.voucher_count }}</td>
+                                            <td>₱{{ row.total_revenue or 0 }}</td>
+                                            <td>₱{{ row.average_transaction or 0 }}</td>
+                                            <td>{{ row.last_activity }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    {% else %}
+                                        <tr>
+                                            <td colspan="6" class="text-center text-muted">No usage data available.</td>
+                                        </tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- API Configuration Tab -->
+        <div class="tab-pane fade" id="api" role="tabpanel">
+            <form method="post" action="{{ url_for('save_api_voucher_params') }}">
+                <div class="row g-3">
+                    <!-- Voucher Group Parameters -->
+                    <div class="col-md-3">
+                        <label class="form-label">Amount</label>
+                        <input type="number" class="form-control" name="amount" value="{{ api_params.amount or 5 }}" min="1" required onchange="updateDurationFromMapping(this.value)">
+                        <small class="text-muted">Number of Vouchers to be generated per request</small>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Code Length</label>
+                        <input type="number" class="form-control" name="code_length" value="{{ api_params.code_length or 8 }}" min="6" max="10" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Code Format</label>
+                        <select class="form-select" name="code_format" required>
+                            <option value="[0,1]" {% if api_params.code_format == '[0,1]' %}selected{% endif %}>Alphanumeric</option>
+                            <option value="[0]" {% if api_params.code_format == '[0]' %}selected{% endif %}>Numbers Only</option>
+                            <option value="[1]" {% if api_params.code_format == '[1]' %}selected{% endif %}>Letters Only</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Limit Type</label>
+                        <select class="form-select" name="limit_type" required>
+                            <option value="0" {% if api_params.limit_type == 0 %}selected{% endif %}>Limited Usage Counts</option>
+                            <option value="1" {% if api_params.limit_type == 1 %}selected{% endif %}>Limited Online Users</option>
+                            <option value="2" {% if api_params.limit_type == 2 %}selected{% endif %}>Unlimited</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Limit Number</label>
+                        <input type="number" class="form-control" name="limit_num" value="{{ api_params.limit_num or 1 }}" min="1" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Duration Type</label>
+                        <select class="form-select" name="duration_type" required>
+                            <option value="0" {% if api_params.duration_type == 0 %}selected{% endif %}>Client Duration</option>
+                            <option value="1" {% if api_params.duration_type == 1 %}selected{% endif %}>Voucher Duration</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Timing Type</label>
+                        <select class="form-select" name="timing_type" required>
+                            <option value="0" {% if api_params.timing_type == 0 %}selected{% endif %}>Timing by Time</option>
+                            <option value="1" {% if api_params.timing_type == 1 %}selected{% endif %}>Timing by Usage</option>
+                        </select>
+                    </div>
+                    <!-- Rate Limit Section -->
+                    <div class="col-md-4">
+                        <label class="form-label">Rate Limit Mode</label>
+                        <select class="form-select" name="rate_limit_mode" required>
+                            <option value="0" {% if api_params.rate_limit_mode == 0 %}selected{% endif %}>Custom Rate Limit</option>
+                            <option value="1" {% if api_params.rate_limit_mode == 1 %}selected{% endif %}>Rate Limit Profile</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Downlink Limit Enable</label>
+                        <select class="form-select" name="down_limit_enable" required>
+                            <option value="false" {% if api_params.down_limit_enable == False or api_params.down_limit_enable == 'false' %}selected{% endif %}>No</option>
+                            <option value="true" {% if api_params.down_limit_enable == True or api_params.down_limit_enable == 'true' %}selected{% endif %}>Yes</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Downlink Limit (Kbps)</label>
+                        <input type="number" class="form-control" name="down_limit" value="{{ api_params.down_limit or 0 }}" min="0">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Uplink Limit Enable</label>
+                        <select class="form-select" name="up_limit_enable" required>
+                            <option value="false" {% if api_params.up_limit_enable == False or api_params.up_limit_enable == 'false' %}selected{% endif %}>No</option>
+                            <option value="true" {% if api_params.up_limit_enable == True or api_params.up_limit_enable == 'true' %}selected{% endif %}>Yes</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Uplink Limit (Kbps)</label>
+                        <input type="number" class="form-control" name="up_limit" value="{{ api_params.up_limit or 0 }}" min="0">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Traffic Limit Enable</label>
+                        <select class="form-select" name="traffic_limit_enable" required>
+                            <option value="false" {% if api_params.traffic_limit_enable == False or api_params.traffic_limit_enable == 'false' %}selected{% endif %}>No</option>
+                            <option value="true" {% if api_params.traffic_limit_enable == True or api_params.traffic_limit_enable == 'true' %}selected{% endif %}>Yes</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Traffic Limit (MB)</label>
+                        <input type="number" class="form-control" name="traffic_limit" value="{{ api_params.traffic_limit or 0 }}" min="0">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Traffic Limit Frequency</label>
+                        <select class="form-select" name="traffic_limit_frequency" required>
+                            <option value="0" {% if api_params.traffic_limit_frequency == 0 %}selected{% endif %}>Total</option>
+                            <option value="1" {% if api_params.traffic_limit_frequency == 1 %}selected{% endif %}>Daily</option>
+                            <option value="2" {% if api_params.traffic_limit_frequency == 2 %}selected{% endif %}>Weekly</option>
+                            <option value="3" {% if api_params.traffic_limit_frequency == 3 %}selected{% endif %}>Monthly</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Currency</label>
+                        <select class="form-select" name="currency" required>
+                            <option value="PHP" {% if api_params.currency == 'PHP' %}selected{% endif %}>Philippine Peso</option>
+                            <option value="USD" {% if api_params.currency == 'USD' %}selected{% endif %}>US Dollar</option>
+                            <option value="EUR" {% if api_params.currency == 'EUR' %}selected{% endif %}>Euro</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Apply to All Portals</label>
+                        <select class="form-select" name="apply_to_all_portals" required>
+                            <option value="true" {% if api_params.apply_to_all_portals == True or api_params.apply_to_all_portals == 'true' %}selected{% endif %}>Yes</option>
+                            <option value="false" {% if api_params.apply_to_all_portals == False or api_params.apply_to_all_portals == 'false' %}selected{% endif %}>No</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Validity Type</label>
+                        <select class="form-select" name="validity_type" required>
+                            <option value="0" {% if api_params.validity_type == 0 %}selected{% endif %}>Any Time</option>
+                            <option value="1" {% if api_params.validity_type == 1 %}selected{% endif %}>Between Effective/Expiration Time</option>
+                            <option value="2" {% if api_params.validity_type == 2 %}selected{% endif %}>By Schedule</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Description</label>
+                        <input type="text" class="form-control" name="description" value="{{ api_params.description or 'Generated Vouchers' }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Print Comments</label>
+                        <input type="text" class="form-control" name="print_comments" value="{{ api_params.print_comments or '' }}">
+                    </div>
+                    <!-- Optional advanced fields -->
+                    <div class="col-md-4">
+                        <label class="form-label">Portals (JSON array)</label>
+                        <input type="text" class="form-control" name="portals" value="{{ api_params.portals or '' }}" placeholder='["portal1","portal2"]'>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Expiration Time (ISO8601)</label>
+                        <input type="text" class="form-control" name="expiration_time" value="{{ api_params.expiration_time or '' }}" placeholder="2025-12-31T23:59:59">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Effective Time (ISO8601)</label>
+                        <input type="text" class="form-control" name="effective_time" value="{{ api_params.effective_time or '' }}" placeholder="2025-01-01T00:00:00">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Logout</label>
+                        <select class="form-select" name="logout">
+                            <option value="false" {% if api_params.logout == False or api_params.logout == 'false' %}selected{% endif %}>No</option>
+                            <option value="true" {% if api_params.logout == True or api_params.logout == 'true' %}selected{% endif %}>Yes</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Schedule (JSON)</label>
+                        <input type="text" class="form-control" name="schedule" value="{{ api_params.schedule or '' }}" placeholder='{"days":["Mon","Tue"],"start":"08:00","end":"18:00"}'>
+                    </div>
+                    <!-- Omada API Credentials -->
+                    <div class="col-md-6">
+                        <label class="form-label">Omada Client ID</label>
+                        <input type="text" class="form-control" name="client_id" value="{{ api_params.client_id or '' }}" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Omada Client Secret</label>
+                        <input type="password" class="form-control" name="client_secret" value="{{ api_params.client_secret or '' }}" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Omada ID</label>
+                        <input type="text" class="form-control" name="omada_id" value="{{ api_params.omada_id or '' }}" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Controller MAC Address</label>
+                        <input type="text" class="form-control" name="controller_mac" placeholder="e.g. 50:3E:AA:XX:XX:XX" value="{{ api_params.controller_mac or '' }}" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Controller Port</label>
+                        <input type="number" class="form-control" name="controller_port" value="{{ api_params.controller_port or 8043 }}" min="1" max="65535" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="controller_ip" class="form-label">Controller IP (optional, will auto-update if discovered)</label>
+                        <input type="text" class="form-control" id="controller_ip" name="controller_ip" value="{{ api_params.controller_ip or '' }}">
+                        <button type="button" class="btn btn-primary" onclick="triggerAutoDiscovery()">Auto-Discover Controller IP</button>
+                    </div>
+                </div>
+                
+                <!-- Duration Mapping Alert -->
+                <div class="alert alert-info mt-3" id="duration-mapping-alert">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>Real-time Duration Lookup:</strong>
+                    <span id="duration-mapping-message">Duration will be automatically determined from current amount-to-duration mappings when generating vouchers</span>
+                </div>
+                
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Save API Configuration
+                    </button>
+                </div>
+            </form>
+            <!-- Rest of the content remains the same... -->
+                <!-- Email Reports Configuration -->
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <i class="fas fa-envelope"></i> Email Reports Configuration
+                    </div>
+                    <div class="card-body">
+                        <form method="post" action="{{ url_for('save_email_config') }}">
+                            <div class="row g-3">
+                                <!-- Pre-configured Gmail SMTP -->
+                                <div class="col-md-4">
+                                    <label class="form-label">SMTP Host</label>
+                                    <input type="text" class="form-control" value="smtp.gmail.com" readonly>
+                                    <small class="text-muted">Pre-configured for Gmail</small>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">SMTP Port</label>
+                                    <input type="text" class="form-control" value="587" readonly>
+                                    <small class="text-muted">TLS Security</small>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Security</label>
+                                    <input type="text" class="form-control" value="TLS" readonly>
+                                    <small class="text-muted">Encrypted connection</small>
+                                </div>
+                                
+                                <!-- Email Credentials (Encrypted) -->
+                                <div class="col-md-6">
+                                    <label class="form-label">Gmail Username</label>
+                                    <input type="email" class="form-control" name="email_username" placeholder="your-email@gmail.com" required value="{{ email_config.email_username or '' }}">
+                                    <small class="text-muted">Your Gmail address</small>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Gmail App Password</label>
+                                    <input type="password" class="form-control" name="email_password" placeholder="Gmail App Password" required value="">
+                                    <small class="text-muted">{% if email_config.email_password %}Password is set. Leave blank to keep current password.{% endif %}</small>
+                                </div>
+                                
+                                <!-- Recipient Emails -->
+                                <div class="col-md-12">
+                                    <label class="form-label">Recipient Email Addresses</label>
+                                    <textarea class="form-control" name="recipient_emails" rows="2" placeholder="admin@company.com, manager@company.com" required>{{ email_config.recipient_emails or '' }}</textarea>
+                                    <small class="text-muted">Comma-separated email addresses to receive reports</small>
+                                </div>
+                                
+                                <!-- Report Schedule -->
+                                <div class="col-md-4">
+                                    <label class="form-label">Daily Report</label>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="daily_report" id="daily_report" {% if email_config.daily_report %}checked{% endif %}>
+                                        <label class="form-check-label" for="daily_report">Enable Daily Reports</label>
+                                    </div>
+                                    <input type="time" class="form-control mt-2" name="daily_cutoff" value="{{ email_config.daily_cutoff or '23:59' }}">
+                                    <small class="text-muted">Cut-off time for daily reports</small>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Weekly Report</label>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="weekly_report" id="weekly_report" {% if email_config.weekly_report %}checked{% endif %}>
+                                        <label class="form-check-label" for="weekly_report">Enable Weekly Reports</label>
+                                    </div>
+                                    <select class="form-select mt-2" name="weekly_day">
+                                        <option value="monday" {% if email_config.weekly_day == 'monday' %}selected{% endif %}>Monday</option>
+                                        <option value="sunday" {% if email_config.weekly_day == 'sunday' %}selected{% endif %}>Sunday</option>
+                                    </select>
+                                    <small class="text-muted">Day to send weekly reports</small>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Monthly Report</label>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="monthly_report" id="monthly_report" {% if email_config.monthly_report %}checked{% endif %}>
+                                        <label class="form-check-label" for="monthly_report">Enable Monthly Reports</label>
+                                    </div>
+                                    <input type="number" class="form-control mt-2" name="monthly_day" min="1" max="28" value="{{ email_config.monthly_day or 1 }}">
+                                    <small class="text-muted">Day of month to send reports</small>
+                                </div>
+                            </div>
+                            <div class="mt-4">
+                                <button type="submit" class="btn btn-success">
+                                    <i class="fas fa-save"></i> Save Email Configuration
+                                </button>
+                                <button type="button" class="btn btn-outline-primary" onclick="testEmail()">
+                                    <i class="fas fa-paper-plane"></i> Send Test Email
+                                </button>
+                            </div>
+                        </form>
+                        <div class="alert alert-warning mt-3">
+                            <i class="fas fa-shield-alt"></i>
+                            <strong>Security Note:</strong> Email username and password are encrypted before storage in database.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- System Maintenance -->
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <i class="fas fa-tools"></i> System Maintenance
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>Database Cleanup</h6>
+                                <p class="text-muted">Remove old logs and optimize database performance.</p>
+                                <form method="post" action="{{ url_for('admin_cleanup_logs') }}">
+                                    <button type="submit" class="btn btn-warning"
+                                        onclick="return confirm('Are you sure you want to clean up old logs?');">
+                                        <i class="fas fa-broom"></i> Cleanup Old Logs
+                                    </button>
+                                </form>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>System Status</h6>
+                                <p class="text-muted">Monitor real-time system health and performance.</p>
+                                <button class="btn btn-info" onclick="refreshAllMetrics()">
+                                    <i class="fas fa-sync-alt"></i> Refresh All Metrics
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+// Global variables for coin mapping
+let selectedESP32 = '';
+let mappingSocket = null;
+let mappingData = [];
+let wsAdmin = null;
+
+function resetWiFiForSelected() {
+    const selector = document.getElementById('coinslot-selector');
+    const device = selector.value;
+    if (!device) {
+        alert('Please select a coinslot device.');
+        return;
+    }
+
+    // Open a WebSocket if not already open
+    if (!wsAdmin || wsAdmin.readyState !== 1) {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        wsAdmin = new WebSocket(`${protocol}//${window.location.host}/ws/admin`);
+        wsAdmin.onopen = function() {
+            sendResetWiFi(device);
+        };
+        wsAdmin.onerror = function(e) {
+            alert('WebSocket error: ' + e.message);
+        };
+        wsAdmin.onmessage = function(event) {
+            // Optionally handle server response
+            try {
+                const data = JSON.parse(event.data);
+                if (data.action === "reset_wifi_ack" && data.location === device) {
+                    alert('✅ Device acknowledged WiFi reset.');
+                }
+            } catch (e) {}
+        };
+    } else {
+        sendResetWiFi(device);
+    }
+}
+
+function sendResetWiFi(device) {
+    const msg = {
+        action: "reset_wifi",
+        location: device
+    };
+    wsAdmin.send(JSON.stringify(msg));
+    alert('Reset WiFi command sent to ' + device + '. The device will reboot and show the setup portal.');
+}
+
+// Enhanced statistics fetching with Omada metrics
+function fetchStats() {
+    fetch('/api/stats')
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('cpu').innerText = data.cpu;
+            document.getElementById('ram').innerText = data.ram;
+            document.getElementById('disk').innerText = data.disk;
+            document.getElementById('uptime').innerText = data.uptime;
+            document.getElementById('ip').innerText = data.ip;
+        })
+        .catch(err => console.error('Failed to fetch stats:', err));
+}
+
+function triggerAutoDiscovery() {
+    fetch('/api/omada/discover_ip', {method: 'POST'})
+      .then(r => r.json())
+      .then(data => {
+        alert(data.message);
+        if(data.controller_ip) {
+          document.getElementById('controller_ip').value = data.controller_ip;
+        }
+      });
+}
+
+function fetchUnifiedStats() {
+    fetch('/api/stats')
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('today-revenue').innerText = data.today_revenue || 0;
+            document.getElementById('vouchers-used').innerText = data.today_vouchers || 0;
+            document.getElementById('devices-online').innerText = data.esp32_devices_count || 0;
+        })
+        .catch(err => {
+            document.getElementById('today-revenue').innerText = '-';
+            document.getElementById('vouchers-used').innerText = '-';
+            document.getElementById('devices-online').innerText = '-';
+        });
+}
+
+// Delete device function
+function deleteDevice(deviceId) {
+    if (confirm('Are you sure you want to delete this device?')) {
+        fetch('/api/devices/delete', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({id: deviceId})
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                alert('✅ Device deleted successfully!');
+                location.reload();
+            } else {
+                alert('❌ Failed to delete device: ' + data.error);
+            }
+        })
+        .catch(err => alert('❌ Delete error: ' + err.message));
+    }
+}
+
+// ESP32 Selection for Mapping
+function selectESP32ForMapping() {
+    const selector = document.getElementById('esp32-selector');
+    selectedESP32 = selector.value;
+    
+    if (selectedESP32) {
+        document.getElementById('mapping-status').style.display = 'block';
+        document.getElementById('mapping-message').textContent = `${selectedESP32} selected for mapping`;
+        startPulseListener();
+    } else {
+        document.getElementById('mapping-status').style.display = 'none';
+        stopPulseListener();
+    }
+}
+
+// Start WebSocket listener for pulses from selected ESP32
+function startPulseListener() {
+    if (mappingSocket) {
+        mappingSocket.close();
+    }
+    
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    mappingSocket = new WebSocket(`${protocol}//${window.location.host}/ws/coin_mapping`);
+    
+    mappingSocket.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+        if (data.type === 'coin_pulse' && data.location === selectedESP32) {
+            addPulseToMappingTable(data);
+        }
+    };
+    
+    mappingSocket.onerror = function(error) {
+        console.error('Mapping WebSocket error:', error);
+    };
+    
+    mappingSocket.onclose = function() {
+        if (selectedESP32) {
+            setTimeout(startPulseListener, 5000);
+        }
+    };
+}
+
+// Stop pulse listener
+function stopPulseListener() {
+    if (mappingSocket) {
+        mappingSocket.close();
+        mappingSocket = null;
+    }
+}
+
+// Add pulse to mapping table
+function addPulseToMappingTable(pulseData) {
+    const tbody = document.getElementById('mapping-tbody');
+    
+    // Remove "no data" message if it exists
+    if (tbody.children.length === 1 && tbody.children[0].children.length === 1) {
+        tbody.innerHTML = '';
+    }
+    
+    const row = document.createElement('tr');
+    row.className = 'pulse-highlight';
+    row.innerHTML = `
+        <td><span class="badge bg-primary">${pulseData.pulse_count}</span></td>
+        <td>
+            <input type="number" class="form-control form-control-sm" 
+                   value="5" step="1"
+                   onchange="updateMappingAmount(${pulseData.pulse_count}, this.value)"
+                   placeholder="Enter amount">
+        </td>
+        <td>
+            <button class="btn btn-sm btn-danger" onclick="removeMappingRow(this, ${pulseData.pulse_count})">
+                <i class="fas fa-trash"></i>
+            </button>
+        </td>
+    `;
+    tbody.appendChild(row);
+    
+    // Store mapping data
+    mappingData.push({
+        pulse_count: pulseData.pulse_count,
+        amount: 5
+    });
+    
+    // Enable save button
+    document.getElementById('save-mappings-btn').disabled = false;
+    
+    // Remove highlight after 3 seconds
+    setTimeout(() => {
+        row.classList.remove('pulse-highlight');
+    }, 3000);
+}
+
+// Update mapping amount
+function updateMappingAmount(pulseCount, amount) {
+    const mapping = mappingData.find(m => m.pulse_count === pulseCount);
+    if (mapping) {
+        mapping.amount = parseInt(amount);
+    }
+}
+
+// Remove mapping row
+function removeMappingRow(button, pulseCount) {
+    const row = button.closest('tr');
+    
+    // Remove from data array
+    mappingData = mappingData.filter(m => m.pulse_count !== pulseCount);
+    
+    // Remove row from table
+    row.remove();
+    
+    // Disable save button if no mappings
+    if (mappingData.length === 0) {
+        document.getElementById('save-mappings-btn').disabled = true;
+        
+        const tbody = document.getElementById('mapping-tbody');
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="3" class="text-center text-muted">
+                    Select an ESP32 device and insert coins to start mapping
+                </td>
+            </tr>
+        `;
+    }
+}
+
+// Clear mapping table
+function clearMappingTable() {
+    const tbody = document.getElementById('mapping-tbody');
+    tbody.innerHTML = `
+        <tr>
+            <td colspan="3" class="text-center text-muted">
+                Select an ESP32 device and insert coins to start mapping
+            </td>
+        </tr>
+    `;
+    mappingData = [];
+    document.getElementById('save-mappings-btn').disabled = true;
+}
+
+// Save all mappings to server
+function saveAllMappings() {
+    if (mappingData.length === 0) {
+        alert('No mapping data to save');
+        return;
+    }
+    
+    fetch('/api/pulse/mappings/save', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            mappings: mappingData
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert(`Successfully saved ${mappingData.length} pulse mappings!`);
+            clearMappingTable();
+            loadCurrentMappings();
+        } else {
+            alert('Failed to save mappings: ' + data.error);
+        }
+    })
+    .catch(err => alert('Error saving mappings: ' + err.message));
+}
+
+// Load current mappings
+function loadCurrentMappings() {
+    fetch('/api/pulse/mappings')
+        .then(r => r.json())
+        .then(data => {
+            const tbody = document.getElementById('current-mappings-tbody');
+            tbody.innerHTML = '';
+            
+            if (data.mappings && data.mappings.length > 0) {
+                data.mappings.forEach(mapping => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td><span class="badge bg-info">${mapping.pulse_count}</span></td>
+                        <td><span class="badge bg-success">₱${mapping.amount}</span></td>
+                        <td><small>${mapping.created_at}</small></td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteMapping(${mapping.id})">
+                                <i class="fas fa-trash"></i> Delete
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } else {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No pulse mappings configured</td></tr>';
+            }
+        })
+        .catch(err => {
+            document.getElementById('current-mappings-tbody').innerHTML = 
+                '<tr><td colspan="4" class="text-center text-danger">Failed to load mappings</td></tr>';
+        });
+}
+
+
+// Delete mapping
+function deleteMapping(mappingId) {
+    if (confirm('Are you sure you want to delete this pulse mapping?')) {
+        fetch(`/api/pulse/mappings/${mappingId}`, {
+            method: 'DELETE'
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                loadCurrentMappings();
+            } else {
+                alert('Failed to delete mapping: ' + data.error);
+            }
+        })
+        .catch(err => alert('Error deleting mapping: ' + err.message));
+    }
+}
+
+// Duration mapping data
+let durationMappingData = [];
+
+// Add duration mapping row
+function addDurationRow() {
+    const tbody = document.getElementById('duration-mapping-tbody');
+    const rowCount = tbody.children.length;
+    
+    const row = document.createElement('tr');
+    row.innerHTML = `
+        <td>
+            <input type="number" class="form-control form-control-sm" 
+                   value="5" step="1" min="1"
+                   onchange="updateDurationMapping(${rowCount}, 'amount', this.value)"
+                   placeholder="Enter amount">
+        </td>
+        <td>
+            <input type="number" class="form-control form-control-sm" 
+                   value="30" step="1" min="1"
+                   onchange="updateDurationMapping(${rowCount}, 'duration', this.value)"
+                   placeholder="Enter minutes">
+        </td>
+        <td>
+            <input type="text" class="form-control form-control-sm" 
+                   value="30 minutes access"
+                   onchange="updateDurationMapping(${rowCount}, 'description', this.value)"
+                   placeholder="Enter description">
+        </td>
+        <td>
+            <button class="btn btn-sm btn-danger" onclick="removeDurationRow(this, ${rowCount})">
+                <i class="fas fa-trash"></i>
+            </button>
+        </td>
+    `;
+    tbody.appendChild(row);
+    
+    // Add to data array
+    durationMappingData.push({
+        id: rowCount,
+        amount: 5,
+        duration: 30,
+        description: "30 minutes access"
+    });
+}
+
+// Update duration mapping
+function updateDurationMapping(id, field, value) {
+    const mapping = durationMappingData.find(m => m.id === id);
+    if (mapping) {
+        if (field === 'amount' || field === 'duration') {
+            mapping[field] = parseInt(value);
+        } else {
+            mapping[field] = value;
+        }
+    }
+}
+
+// Remove duration row
+function removeDurationRow(button, id) {
+    const row = button.closest('tr');
+    
+    // Remove from data array
+    durationMappingData = durationMappingData.filter(m => m.id !== id);
+    
+    // Remove row from table
+    row.remove();
+}
+
+// Save duration mappings
+function saveDurationMappings() {
+    if (durationMappingData.length === 0) {
+        alert('No duration mapping data to save');
+        return;
+    }
+    
+    fetch('/api/duration/mappings/save', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            mappings: durationMappingData
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert(`Successfully saved ${durationMappingData.length} duration mappings!`);
+            loadCurrentDurationMappings();
+        } else {
+            alert('Failed to save duration mappings: ' + data.error);
+        }
+    })
+    .catch(err => alert('Error saving duration mappings: ' + err.message));
+}
+
+// Load current duration mappings
+function loadCurrentDurationMappings() {
+    fetch('/api/duration/mappings/current')
+        .then(r => r.json())
+        .then(data => {
+            const tbody = document.getElementById('current-duration-tbody');
+            tbody.innerHTML = '';
+            
+            if (data.mappings && data.mappings.length > 0) {
+                data.mappings.forEach(mapping => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td><span class="badge bg-success">₱${mapping.amount}</span></td>
+                        <td><span class="badge bg-info">${mapping.duration} min</span></td>
+                        <td><small>${mapping.description}</small></td>
+                        <td><small>${mapping.created_at}</small></td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteDurationMapping(${mapping.id})">
+                                <i class="fas fa-trash"></i> Delete
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } else {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No duration mappings configured</td></tr>';
+            }
+        })
+        .catch(err => {
+            document.getElementById('current-duration-tbody').innerHTML = 
+                '<tr><td colspan="5" class="text-center text-danger">Failed to load duration mappings</td></tr>';
+        });
+}
+
+// Delete duration mapping
+function deleteDurationMapping(mappingId) {
+    if (confirm('Are you sure you want to delete this duration mapping?')) {
+        fetch(`/api/duration/mappings/${mappingId}`, {
+            method: 'DELETE'
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                loadCurrentDurationMappings();
+            } else {
+                alert('Failed to delete duration mapping: ' + data.error);
+            }
+        })
+        .catch(err => alert('Error deleting duration mapping: ' + err.message));
+    }
+}
+
+document.getElementById('checkVoucherStockBtn').onclick = function() {
+    fetch('/admin/check_voucher_stock', {method: 'POST'})
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('voucherStockResult').innerText = data.message;
+        })
+        .catch(err => {
+            document.getElementById('voucherStockResult').innerText = "Error: " + err;
+        });
+};
+
+// Test email function
+function testEmail() {
+    fetch('/test_email', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'}
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert('✅ Test email sent successfully!');
+        } else {
+            alert('❌ Test email failed: ' + data.error);
+        }
+    })
+    .catch(err => alert('❌ Test email error: ' + err.message));
+}
+
+// Refresh all metrics
+function refreshAllMetrics() {
+    fetchStats();
+    fetchUnifiedStats();
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  fetch('/api/email_config')
+    .then(r => r.json())
+    .then(data => {
+      document.getElementsByName('email_username')[0].value = data.email_username || '';
+      document.getElementsByName('email_password')[0].value = data.email_password || '';
+      document.getElementsByName('recipient_emails')[0].value = data.recipient_emails || '';
+      document.getElementsByName('daily_report')[0].checked = !!data.daily_report;
+      document.getElementsByName('weekly_report')[0].checked = !!data.weekly_report;
+      document.getElementsByName('monthly_report')[0].checked = !!data.monthly_report;
+      document.getElementsByName('daily_cutoff')[0].value = data.daily_cutoff || '23:59';
+      document.getElementsByName('weekly_day')[0].value = data.weekly_day || 'Sunday';
+      document.getElementsByName('monthly_day')[0].value = data.monthly_day || 1;
+    });
+});
+
+// Initialize dashboard
+fetchStats();
+fetchUnifiedStats();
+loadCurrentMappings();
+loadCurrentDurationMappings();
+cacheDurationMappings();
+
+// Auto-refresh every 30 seconds
+setInterval(function() {
+    fetchStats();
+    fetchUnifiedStats();
+}, 30000);
+
+
+// Add some default duration mappings on page load
+setTimeout(() => {
+    addDurationRow(); // ₱5 = 30 minutes
+    updateDurationMapping(0, 'amount', 5);
+    updateDurationMapping(0, 'duration', 30);
+    updateDurationMapping(0, 'description', '30 minutes WiFi access');
+}, 1000);
+
+// Auto-refresh duration mappings cache every 60 seconds
+setInterval(cacheDurationMappings, 60000);
+</script>
+
+</body>
+</html>

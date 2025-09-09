@@ -1,0 +1,9 @@
+[Unit]
+Description=Run XJServer One-Shot Startup Job
+
+[Service]
+Type=oneshot
+User=orangepi
+WorkingDirectory=/opt/xjserver
+Environment="XJSERVER_ENCRYPT_KEY=RzULegZUeKrA7MmeU9rQ6_WBWZ51Ka8xsLVSoMBAKK8="
+ExecStart=/opt/xjserver/venv/bin/python -u /opt/xjserver/startup.py

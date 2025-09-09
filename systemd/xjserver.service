@@ -1,0 +1,21 @@
+[Unit]
+Description=XJServer Service
+After=network.target
+After=xjserverstart.service
+Requires=xjserverstart.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/xjserver
+Environment="XJSERVER_ENCRYPT_KEY=RzULegZUeKrA7MmeU9rQ6_WBWZ51Ka8xsLVSoMBAKK8="
+Environment="FLASK_SECRET_KEY=yiwXboaPVHpDx7dwKVGYpHeyTSIiyaZYonsE7T7kTDI="
+User=orangepi
+ExecStart=/opt/xjserver/venv/bin/gunicorn -w 4 -b 0.0.0.0:8000 app:app
+Restart=always
+RestartSec=2
+AmbientCapabilities=CAP_NET_RAW
+CapabilityBoundingSet=CAP_NET_RAW CAP_NET_ADMIN CAP_NET_BIND_SERVICE
+
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,21 @@
+[Unit]
+Description=XJServer ESP32 WebSocket Service
+After=network.target
+
+
+[Service]
+Type=simple
+User=orangepi
+WorkingDirectory=/opt/xjserver
+Environment="XJSERVER_ENCRYPT_KEY=RzULegZUeKrA7MmeU9rQ6_WBWZ51Ka8xsLVSoMBAKK8="
+ExecStart=/opt/xjserver/venv/bin/python -u /opt/xjserver/esp32_handlers.py
+Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+AmbientCapabilities=CAP_NET_RAW
+CapabilityBoundingSet=CAP_NET_RAW CAP_NET_ADMIN CAP_NET_BIND_SERVICE
+Restart=always
+RestartSec=2
+Environment=ESP32_WS_HOST=0.0.0.0
+Environment=ESP32_WS_PORT=8001
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,11 @@
+Flask>=2.2
+websockets
+psutil
+Werkzeug
+requests
+Jinja2
+python-dotenv
+cryptography>=3.4.8
+glob2
+scapy
+gunicorn
