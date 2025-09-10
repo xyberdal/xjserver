@@ -1,5 +1,8 @@
 [Unit]
 Description=XJServer UDP Listener and Periodic Scan
+After=network-online.target xj-autosetup.service
+Requires=xj-autosetup.service
+
 
 [Service]
 Type=simple

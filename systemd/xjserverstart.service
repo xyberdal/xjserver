@@ -1,5 +1,8 @@
 [Unit]
 Description=Run XJServer One-Shot Startup Job
+After=network-online.target xj-autosetup.service
+Requires=xj-autosetup.service
+
 
 [Service]
 Type=oneshot

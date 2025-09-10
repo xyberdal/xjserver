@@ -1,6 +1,7 @@
 [Unit]
 Description=XJServer ESP32 WebSocket Service
-After=network.target
+After=network-online.target xj-autosetup.service
+Requires=xj-autosetup.service
 
 
 [Service]

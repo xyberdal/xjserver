@@ -1,0 +1,11 @@
+[Unit]
+Description=Auto setup & update XJServer
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/xjserver/xjserverscript/xj-autosetup.sh
+RemainAfterExit=no
+
+[Install]
+WantedBy=multi-user.target
