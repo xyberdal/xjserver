@@ -42,12 +42,16 @@ if [ -d "$WORKDIR/systemd" ]; then
     echo "Updating systemd units..."
     sudo cp -f "$WORKDIR/systemd/"* /etc/systemd/system/
     sudo systemctl daemon-reload
-    for service in "$WORKDIR/systemd/"*.service; do
-        [ -e "$service" ] || continue
-        svcname=$(basename "$service")
+
+    # Ensure the loop works even if there are no .service files
+    shopt -s nullglob
+    for servicefile in "$WORKDIR"/systemd/*.service; do
+        svcname=$(basename "$servicefile")
+        echo "Enabling & restarting $svcname..."
         sudo systemctl enable "$svcname"
         sudo systemctl restart "$svcname"
     done
+    shopt -u nullglob
 fi
 
 # ---- xjserver files ----
