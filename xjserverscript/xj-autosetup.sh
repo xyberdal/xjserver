@@ -7,6 +7,14 @@ TARGET_XJSERVER="/opt/xjserver"
 TARGET_XJSERVERSCRIPT="/opt/xjserverscript"
 VERSION_FILE="/opt/.xj_last_version"
 
+# --- Wait for network to be ready ---
+echo "Checking network availability..."
+until ping -c1 github.com &>/dev/null; do
+    echo "Waiting for network..."
+    sleep 5
+done
+echo "Network is ready."
+
 # Get latest remote commit hash (without cloning everything)
 LATEST_VERSION=$(git ls-remote "$REPO" refs/heads/main | awk '{print $1}')
 
