@@ -5,9 +5,8 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
-ExecStart=/opt/xjserverscript/xj-autosetup.sh
+ExecStart=/opt/xjserver/xjserverscript/xj-autosetup.sh
 RemainAfterExit=no
-TimeoutStartSec=300   # wait up to 5 min in case network is slow
 
 [Install]
 WantedBy=multi-user.target

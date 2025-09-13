@@ -4,7 +4,6 @@ set -e
 REPO="https://github.com/xyberdal/xjserver.git"
 WORKDIR="/opt/xjserver_repo"   # temporary repo bag
 TARGET_XJSERVER="/opt/xjserver"
-TARGET_XJSERVERSCRIPT="/opt/xjserverscript"
 VERSION_FILE="/opt/.xj_last_version"
 
 # --- Wait for network to be ready ---
@@ -51,24 +50,20 @@ if [ -d "$WORKDIR/systemd" ]; then
     done
 fi
 
-# ---- xjserver files (app code only, won't touch db/logs/backups) ----
+# ---- xjserver files ----
 if [ -d "$WORKDIR/xjserver" ]; then
+    if [ ! -d "$TARGET_XJSERVER" ]; then
+        echo "Error: $TARGET_XJSERVER does not exist! (not creating it to protect venv)"
+        rm -rf "$WORKDIR"
+        exit 1
+    fi
     echo "Updating /opt/xjserver..."
-    sudo mkdir -p "$TARGET_XJSERVER"
     sudo cp -rf "$WORKDIR/xjserver/"* "$TARGET_XJSERVER/"
 fi
 
-# ---- xjserverscript files ----
-if [ -d "$WORKDIR/xjserverscript" ]; then
-    echo "Updating /opt/xjserverscript..."
-    sudo mkdir -p "$TARGET_XJSERVERSCRIPT"
-    sudo cp -rf "$WORKDIR/xjserverscript/"* "$TARGET_XJSERVERSCRIPT/"
-    sudo chmod +x "$TARGET_XJSERVERSCRIPT/"*
-fi
-
 # Ensure main autosetup script is executable (if present)
-if [ -f "$TARGET_XJSERVERSCRIPT/xj-autosetup.sh" ]; then
-    sudo chmod +x "$TARGET_XJSERVERSCRIPT/xj-autosetup.sh"
+if [ -f "$TARGET_XJSERVER/xjserverscript/xj-autosetup.sh" ]; then
+    sudo chmod +x "$TARGET_XJSERVER/xjserverscript/xj-autosetup.sh"
 fi
 
 # Save current version
