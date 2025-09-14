@@ -94,88 +94,65 @@
             {% endfor %}
         {% endif %}
     {% endwith %}       
-    <!-- Enhanced System Stats with Icons and Colors -->
-    <div class="row mb-4">
-        <div class="col-md-2 col-6 mb-3">
-            <div class="card card-metric text-center">
-                <div class="card-body">
-                    <i class="fas fa-microchip metric-icon"></i>
-                    <h5 class="mb-0"><span id="cpu">-</span>%</h5>
-                    <small>CPU Usage</small>
-                </div>
+    <!-- Replace the sidebar and its .row with this block, place it just before your main content tabs -->
+    <div class="stats-bar d-flex align-items-stretch gap-3 mb-4" style="overflow-x:auto; white-space:nowrap;">
+        <div class="card card-metric text-center flex-shrink-0" style="min-width:120px;">
+            <div class="card-body">
+                <i class="fas fa-microchip metric-icon"></i>
+                <h5 class="mb-0"><span id="cpu">-</span>%</h5>
+                <small>CPU<br>Usage</small>
             </div>
         </div>
-        <div class="col-md-2 col-6 mb-3">
-            <div class="card card-metric text-center" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
-                <div class="card-body">
-                    <i class="fas fa-memory metric-icon"></i>
-                    <h5 class="mb-0"><span id="ram">-</span>%</h5>
-                    <small>RAM Usage</small>
-                </div>
+        <div class="card card-metric text-center flex-shrink-0" style="min-width:120px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+            <div class="card-body">
+                <i class="fas fa-memory metric-icon"></i>
+                <h5 class="mb-0"><span id="ram">-</span>%</h5>
+                <small>RAM<br>Usage</small>
             </div>
         </div>
-        <div class="col-md-2 col-6 mb-3">
-            <div class="card card-metric text-center" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
-                <div class="card-body">
-                    <i class="fas fa-hdd metric-icon"></i>
-                    <h5 class="mb-0"><span id="disk">-</span>%</h5>
-                    <small>Disk Usage</small>
-                </div>
+        <div class="card card-metric text-center flex-shrink-0" style="min-width:120px; background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+            <div class="card-body">
+                <i class="fas fa-hdd metric-icon"></i>
+                <h5 class="mb-0"><span id="disk">-</span>%</h5>
+                <small>Disk<br>Usage</small>
             </div>
         </div>
-        <div class="col-md-3 col-6 mb-3">
-            <div class="card card-metric text-center" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
-                <div class="card-body">
-                    <i class="fas fa-clock metric-icon"></i>
-                    <h6 class="mb-0"><span id="uptime">-</span></h6>
-                    <small>System Uptime</small>
-                </div>
+        <div class="card card-metric text-center flex-shrink-0" style="min-width:120px; background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+            <div class="card-body">
+                <i class="fas fa-clock metric-icon"></i>
+                <h6 class="mb-0"><span id="uptime">-</span></h6>
+                <small>System<br>Uptime</small>
             </div>
         </div>
-        <div class="col-md-3 col-6 mb-3">
-            <div class="card card-metric text-center" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
-                <div class="card-body">
-                    <i class="fas fa-network-wired metric-icon"></i>
-                    <h6 class="mb-0"><span id="ip">-</span></h6>
-                    <small>Server IP</small>
-                </div>
+        <div class="card card-metric text-center flex-shrink-0" style="min-width:120px; background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+            <div class="card-body">
+                <i class="fas fa-network-wired metric-icon"></i>
+                <h6 class="mb-0"><span id="ip">-</span></h6>
+                <small>Server IP</small>
             </div>
         </div>
-    </div>
-
-    <!-- Real-time Omada Portal Metrics + Customer Use Later -->
-    <div class="row mb-4">
-        <div class="col-md-2 col-6 mb-3">
-            <div class="card border-success">
-                <div class="card-body text-center">
-                    <i class="fas fa-coins text-success" style="font-size: 2rem;"></i>
-                    <h4 class="mb-0">₱<span id="today-revenue">-</span></h4>
-                    <small class="text-muted">Today's Revenue</small>
-                </div>
+        <div class="card border-success text-center flex-shrink-0" style="min-width:120px;">
+            <div class="card-body">
+                <i class="fas fa-coins text-success" style="font-size: 2rem;"></i>
+                <h4 class="mb-0">₱<span id="today-revenue">-</span></h4>
+                <small class="text-muted">Today's<br>Revenue</small>
             </div>
         </div>
-        <div class="col-md-2 col-6 mb-3">
-            <div class="card border-warning">
-                <div class="card-body text-center">
-                    <i class="fas fa-ticket-alt text-warning" style="font-size: 2rem;"></i>
-                    <h4 class="mb-0"><span id="vouchers-used">-</span></h4>
-                    <small class="text-muted">Vouchers Used Today</small>
-                </div>
+        <div class="card border-warning text-center flex-shrink-0" style="min-width:120px;">
+            <div class="card-body">
+                <i class="fas fa-ticket-alt text-warning" style="font-size: 2rem;"></i>
+                <h4 class="mb-0"><span id="vouchers-used">-</span></h4>
+                <small class="text-muted">Vouchers<br>Used Today</small>
             </div>
         </div>
-        <div class="col-md-2 col-6 mb-3">
-            <div class="card border-info">
-                <div class="card-body text-center">
-                    <i class="fas fa-wifi text-info" style="font-size: 2rem;"></i>
-                    <h4 class="mb-0"><span id="devices-online">-</span></h4>
-                    <small class="text-muted">Devices Online</small>
-                </div>
+        <div class="card border-info text-center flex-shrink-0" style="min-width:120px;">
+            <div class="card-body">
+                <i class="fas fa-wifi text-info" style="font-size: 2rem;"></i>
+                <h4 class="mb-0"><span id="devices-online">-</span></h4>
+                <small class="text-muted">Devices<br>Online</small>
             </div>
         </div>
     </div>
-
-    
-
     <!-- Main Configuration Tabs -->
     <ul class="nav nav-tabs" id="adminTabs" role="tablist">
         <li class="nav-item" role="presentation">
