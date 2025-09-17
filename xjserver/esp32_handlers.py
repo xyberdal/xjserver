@@ -262,11 +262,11 @@ async def authenticate_connection(query: dict):
                 # Use the MAC address as the message
                 mac_for_verification = mac_address  # Use the original MAC, not hashed
                 if verify_mac_signature(mac_for_verification, api_secret, device["publickey"]):
-                    # Valid license, erase ws_token and publickey (one-time use)
-                    c.execute('UPDATE esp32_devices SET ws_token = "", publickey = "" WHERE mac_address = ?', (incoming_mac_hash,))
+                    # Valid license, erase ws_token (one-time use)
+                    c.execute('UPDATE esp32_devices SET ws_token = "" WHERE mac_address = ?', (incoming_mac_hash,))
                     conn.commit()
                     conn.close()
-                    print("  --> MAC signature valid, ws_token and publickey erased")
+                    print("  --> MAC signature valid, ws_token erased")
                     return (True, "", device_type, device["location_name"], mac_address, None, device["site_id"])
                 else:
                     conn.close()
