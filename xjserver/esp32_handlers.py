@@ -448,6 +448,13 @@ async def handle_request_voucher(ws, data: dict, location: str):
         conn.commit()
         conn.close()
 
+        if is_encrypted(code):
+            try:
+                code = decrypt(code)
+            except Exception as e:
+                print(f"❌ Error decrypting voucher code: {e}")
+                return None
+
         # Send voucher to ESP32
         await send_to_location(location, {
             "action": "voucher_generated",
