@@ -69,7 +69,7 @@ def get_site_name_by_id(site_id):
     """Fetch the site name for a given site_id from the main DB."""
     conn = get_db()
     c = conn.cursor()
-    c.execute("SELECT site_name FROM sites WHERE site_id = ?", (site_id,))
+    c.execute("SELECT site_name FROM sites WHERE site_id = ?", (decrypt(site_id),))
     row = c.fetchone()
     conn.close()
     return row['site_name'] if row else None
