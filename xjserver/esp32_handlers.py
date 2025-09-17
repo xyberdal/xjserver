@@ -72,6 +72,9 @@ def get_price_for_duration(duration_minutes):
         print(f"❌ Error getting price for duration: {e}")
         return None
 
+def is_encrypted(code):
+    # Simple check: encrypted codes are usually longer and base64-like
+    return isinstance(code, str) and len(code) > 20 and all(c.isalnum() or c in '+/=' for c in code)
 
 def get_voucher_from_database(duration_minutes, site_id):
     """Dispense oldest unused voucher from the correct site table, generating if needed."""
@@ -80,10 +83,17 @@ def get_voucher_from_database(duration_minutes, site_id):
         if price is None:
             print(f"❌ No price mapping for {duration_minutes} minutes")
             return None
-        
-        generate_vouchers_if_needed(site_id, price, duration_minutes)
+
+        # Try to generate vouchers, but ignore errors if Omada is offline
+        try:
+            generate_vouchers_if_needed(site_id, price, duration_minutes)
+        except Exception as e:
+            print(f"[INFO] Omada unreachable or error during voucher generation: {e}")
 
         site_name = get_site_name_by_id(site_id)
+        if not site_name:
+            print(f"❌ No site name found for site_id: {site_id}")
+            return None
 
         conn = get_site_db_connection(site_name)
         if not conn:
@@ -103,13 +113,22 @@ def get_voucher_from_database(duration_minutes, site_id):
                   (datetime.now().isoformat(), code))
         conn.commit()
         conn.close()
+
+        # Always decrypt if needed
+        if is_encrypted(code):
+            try:
+                code = decrypt(code)
+            except Exception as e:
+                print(f"❌ Error decrypting voucher code: {e}")
+                return None
+
         print(f"✅ Dispensed voucher from price_{price}: {code}")
         return code
 
     except Exception as e:
         print(f"❌ Error getting voucher from site DB: {e}")
         return None
-
+    
 def get_esp32_by_locationlog(location_name):
     """Get ESP32 device by decrypted location name (slow, but works with randomized encryption)."""
     conn = get_db()
@@ -247,11 +266,11 @@ async def authenticate_connection(query: dict):
                 # Use the MAC address as the message
                 mac_for_verification = mac_address  # Use the original MAC, not hashed
                 if verify_mac_signature(mac_for_verification, api_secret, device["publickey"]):
-                    # Valid license, erase ws_token (one-time use)
-                    c.execute('UPDATE esp32_devices SET ws_token = "" WHERE mac_address = ?', (incoming_mac_hash,))
+                    # Valid license, erase ws_token and publickey (one-time use)
+                    c.execute('UPDATE esp32_devices SET ws_token = "", publickey = "" WHERE mac_address = ?', (incoming_mac_hash,))
                     conn.commit()
                     conn.close()
-                    print("  --> MAC signature valid, ws_token erased")
+                    print("  --> MAC signature valid, ws_token and publickey erased")
                     return (True, "", device_type, device["location_name"], mac_address, None, device["site_id"])
                 else:
                     conn.close()
@@ -391,7 +410,7 @@ async def handle_request_voucher(ws, data: dict, location: str):
         print(f"[DEBUG] Found site_id: {site_id} for location: {location}")
         
         # Get site name from site_id
-        site_name = get_site_name_by_id(decrypt(site_id))
+        site_name = get_site_name_by_id(site_id)
         if not site_name:
             print(f"[DEBUG] No site_name found for site_id: {site_id}")
             await send_json(ws, {"action": "voucher_generated", "success": False, "error": "No site_name for site_id"})
