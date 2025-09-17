@@ -84,12 +84,8 @@ def get_voucher_from_database(duration_minutes, site_id):
             print(f"❌ No price mapping for {duration_minutes} minutes")
             return None
 
-        # Try to generate vouchers, but ignore errors if Omada is offline
-        try:
-            generate_vouchers_if_needed(site_id, price, duration_minutes)
-        except Exception as e:
-            print(f"[INFO] Omada unreachable or error during voucher generation: {e}")
-
+        generate_vouchers_if_needed(site_id, price, duration_minutes)
+        
         site_name = get_site_name_by_id(site_id)
         if not site_name:
             print(f"❌ No site name found for site_id: {site_id}")
@@ -97,7 +93,7 @@ def get_voucher_from_database(duration_minutes, site_id):
 
         conn = get_site_db_connection(site_name)
         if not conn:
-            print(f"❌ Cannot connect to site DB for {site_id}")
+            print(f"❌ Cannot connect to site DB for {site_name}")
             return None
 
         c = conn.cursor()
